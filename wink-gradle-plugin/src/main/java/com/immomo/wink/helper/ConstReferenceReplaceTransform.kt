@@ -283,47 +283,46 @@ class ConstReferenceReplaceTransform(val project: Project) : Transform() {
             }
         }
 
+        /**
+         * 获取给定路径下的所有class文件的常量信息
+         */
         @JvmStatic
         fun buildDiffResolvedClass(dir: File): List<ResolvedClass> {
 
             val rst = mutableListOf<ResolvedClass>()
 
-            dir.walkBottomUp().forEach {
-                if (it.isFile && it.absolutePath.endsWith(".class")) {
-                    WinkLog.d("获取diff常量类, class.path=${it.absolutePath}")
-                    val index = it.absolutePath.indexOfLast { it == '/' }
-                    val substring = it.absolutePath.substring(index + 1)
-
-                    if (!substring.startsWith("R.class")
-                        && !substring.startsWith("R$")
-                        && !substring.startsWith("BuildConfig")
-                        && !substring.startsWith("ARouter")
-                    ) {
-                        val classReader = ClassReader(FileInputStream(it.absolutePath))
-                        val classNode = ClassNode()
-                        classReader.accept(classNode, 0)
-
-                        val resolvedClass = ResolvedClass(classReader.className)
-
-                        classNode.fields.forEach { fn ->
-                            WinkLog.d("获取diff常量类, fields.name=${it.name},fields.value=${fn.value}")
-
-                            if (fn.access and Opcodes.ACC_PUBLIC == Opcodes.ACC_PUBLIC
-                                && fn.access and Opcodes.ACC_STATIC == Opcodes.ACC_STATIC
-                                && fn.access and Opcodes.ACC_FINAL == Opcodes.ACC_FINAL
-                                && (fn.value is Int || fn.value is Long || fn.value is String || fn.value is Double || fn.value is Float)
-                            ) {
-                                fn.name?.let { constName ->
-                                    resolvedClass.constKV.put(constName, getConstMapKey(fn.value))
-                                }
-                            }
+            dir.walk()
+                .filter {
+                    it.isFile && it.absolutePath.endsWith(".class")
+                }
+                .filterNot { classFile ->
+                    val index = classFile.absolutePath.lastIndexOf("/")
+                    val substring = classFile.absolutePath.substring(index + 1)
+                    substring.startsWith("R.class")
+                            || substring.startsWith("R$")
+                            || substring.startsWith("BuildConfig")
+                            || substring.startsWith("ARouter")
+                }.map { classFile ->
+                    WinkLog.d("获取${classFile.absolutePath}的常量信息:")
+                    val classReader = ClassReader(FileInputStream(classFile.absolutePath))
+                    val classNode = ClassNode()
+                    classReader.accept(classNode, 0)
+                    Pair(ResolvedClass(classReader.className), classNode.fields)
+                }
+                .forEach { (resolvedClass, fields) ->
+                    fields
+                        .filter { fn ->
+                            fn.access and Opcodes.ACC_PUBLIC == Opcodes.ACC_PUBLIC
+                                    && fn.access and Opcodes.ACC_STATIC == Opcodes.ACC_STATIC
+                                    && fn.access and Opcodes.ACC_FINAL == Opcodes.ACC_FINAL
+                                    && (fn.value is Int || fn.value is Long || fn.value is String || fn.value is Double || fn.value is Float)
+                        }
+                        .forEach { fn ->
+                            resolvedClass.constKV[fn.name] = getConstMapKey(fn.value)
                         }
 
-                        rst.add(resolvedClass)
-                    }
+                    rst.add(resolvedClass)
                 }
-
-            }
 
             return rst
         }

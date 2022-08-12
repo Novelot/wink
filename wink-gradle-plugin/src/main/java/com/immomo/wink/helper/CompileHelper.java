@@ -1,7 +1,6 @@
 package com.immomo.wink.helper;
 
 
-import com.immomo.wink.ResolvedClass;
 import com.immomo.wink.Settings;
 import com.immomo.wink.WinkOptions;
 import com.immomo.wink.util.KaptEncodeUtils;
@@ -21,28 +20,50 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.jar.JarFile;
 
 public class CompileHelper {
+
+    List<String> changedAnnotationList;
 
     public void compileCode() {
         File file = new File(Settings.env.tmpPath + "/tmp_class");
         if (!file.exists()) {
             file.mkdirs();
         }
+        compileInner();
 
+        ConstRefReplaceHelper.checkConstChange(file, (moduleName, constChangedJava, constChangedKotlin) -> {
+            if (!constChangedKotlin.isEmpty() || !constChangedJava.isEmpty()) {
+
+                //加入changed List
+                Optional<Settings.ProjectTmpInfo> pro = Settings.data.projectBuildSortList.stream().filter(projectTmpInfo -> moduleName.equals(projectTmpInfo.fixedInfo.name)).findFirst();
+                pro.get().changedJavaFiles.addAll(constChangedJava);
+                pro.get().changedKotlinFiles.addAll(constChangedKotlin);
+
+                WinkLog.i("再编译...");
+                compileInner();
+            }
+
+            if (changedAnnotationList.size() > 0) {
+                String classPathStr = getFullClasspathString();
+                compileKaptFile(classPathStr);
+            }
+            createDexPatch();
+
+            return null;
+        });
+
+
+    }
+
+    private void compileInner() {
         //变更注解的文件列表
-        List<String> changedAnnotationList = getChangedAnnotationList();
-//        List<String> changedAnnotationList = new ArrayList<>();
-//        changedAnnotationList.add("/Users/momo/Documents/MomoProject/wink/wink-demo-app/src/main/java/com/immomo/wink/MainActivity3.java");
+        changedAnnotationList = getChangedAnnotationList();
         if (changedAnnotationList.size() > 0) {
             changedAnnotationList.add(Settings.env.tmpPath + "/KaptCompileFile.kt");
         }
         WinkLog.d("changedAnnotationList >>>>>>>>>>>>>>>>>>> : " + changedAnnotationList.toString());
-
 
         compileKapt(changedAnnotationList);
 
@@ -53,143 +74,6 @@ public class CompileHelper {
         for (Settings.ProjectTmpInfo project : Settings.data.projectBuildSortList) {
             compileJava(project);
         }
-
-        List<ResolvedClass> diffResolvedClass = ConstReferenceReplaceTransform.buildDiffResolvedClass(file);
-        HashMap<String, ArrayList<String>> const2Classes = ConstReferenceReplaceTransform.loadConst2Classes(Settings.env.rootDir);
-        //
-        WinkLog.i("本地const2Classes中的记录:");
-        const2Classes.forEach(new BiConsumer<String, ArrayList<String>>() {
-            @Override
-            public void accept(String s, ArrayList<String> strings) {
-                WinkLog.i("\t常量:" + s);
-                strings.forEach(new Consumer<String>() {
-                    @Override
-                    public void accept(String s) {
-                        WinkLog.i("\t\t" + s);
-                    }
-                });
-            }
-        });
-        WinkLog.i("==================================");
-        //
-        Set<String> constChangedJava = new HashSet<>();
-        Set<String> constChangedKotlin = new HashSet<>();
-
-        if (!diffResolvedClass.isEmpty()) {
-            diffResolvedClass.forEach(new Consumer<ResolvedClass>() {
-                @Override
-                public void accept(ResolvedClass rc) {
-                    String className = rc.getClassName();
-
-                    ResolvedClass old = ConstReferenceReplaceTransform.loadResolvedClass(Settings.env.rootDir, className);
-                    if (old == null) return;
-
-                    Map<String, String> constKV = rc.getConstKV();
-                    WinkLog.i(className + "类的以下常量发生了变化:");
-                    constKV.forEach(new BiConsumer<String, String>() {
-                        @Override
-                        public void accept(String s, String value) {
-                            Object oldValue = old.getConstKV().get(s);
-                            WinkLog.i("\t\t --------------------------------");
-                            WinkLog.i("\t\t 旧 " + s + ":" + oldValue);
-                            WinkLog.i("\t\t 新 " + s + ":" + value);
-
-                            if (!(value != null && value.equals(oldValue))) {
-                                WinkLog.i("\t\t 变 " + s + "," + value);
-
-                                //删除旧值与类的映射
-                                ArrayList<String> classList = const2Classes.remove(oldValue);
-
-                                if (classList == null) {
-                                    WinkLog.i("\t\t 引用该常量对应的类,列表为空!");
-                                } else {
-                                    //将新值与类的映射,存档
-                                    //将常量变化对应的类,放入需要编译的列表;//变化常量对应的类:
-                                    const2Classes.put(value, classList);
-                                    //分开Java与kotlin
-                                    classList.forEach(new Consumer<String>() {
-                                        @Override
-                                        public void accept(String s) {
-                                            if (s != null) {
-                                                if (s.endsWith(".kt")) {
-                                                    constChangedKotlin.add(s);
-                                                } else if (s.endsWith(".java")) {
-                                                    constChangedJava.add(s);
-                                                }
-                                            }
-                                        }
-                                    });
-                                    //快照
-                                    WinkLog.i("\t\t 引用该常量对应的类:");
-                                    snapshot(oldValue, classList);
-                                    WinkLog.i("\t\t --------------------------------");
-                                }
-                            }
-                        }
-                    });
-                    ConstReferenceReplaceTransform.saveConst2Classes(Settings.env.rootDir, const2Classes);
-                    ConstReferenceReplaceTransform.saveResovedClass(Settings.env.rootDir, rc);
-
-                }
-            });
-
-            if (!constChangedKotlin.isEmpty() || !constChangedJava.isEmpty()) {
-                Optional<Settings.ProjectTmpInfo> pro = Settings.data.projectBuildSortList.stream().filter(new Predicate<Settings.ProjectTmpInfo>() {
-                    @Override
-                    public boolean test(Settings.ProjectTmpInfo projectTmpInfo) {
-                        return "wink-demo-app".equals(projectTmpInfo.fixedInfo.name);
-                    }
-                }).findFirst();
-
-                pro.get().changedJavaFiles.addAll(constChangedJava);
-                pro.get().changedKotlinFiles.addAll(constChangedKotlin);
-
-                WinkLog.i("再编译...");
-
-                pro.get().changedJavaFiles.forEach(new Consumer<String>() {
-                    @Override
-                    public void accept(String s) {
-                        WinkLog.i("再编译...changedJavaFiles:" + s);
-                    }
-                });
-                //compileCode();
-                //变更注解的文件列表
-                changedAnnotationList = getChangedAnnotationList();
-//        List<String> changedAnnotationList = new ArrayList<>();
-//        changedAnnotationList.add("/Users/momo/Documents/MomoProject/wink/wink-demo-app/src/main/java/com/immomo/wink/MainActivity3.java");
-                if (changedAnnotationList.size() > 0) {
-                    changedAnnotationList.add(Settings.env.tmpPath + "/KaptCompileFile.kt");
-                }
-                WinkLog.d("changedAnnotationList >>>>>>>>>>>>>>>>>>> : " + changedAnnotationList.toString());
-
-
-                compileKapt(changedAnnotationList);
-
-                for (Settings.ProjectTmpInfo project : Settings.data.projectBuildSortList) {
-                    compileKotlin(project);
-                }
-
-                for (Settings.ProjectTmpInfo project : Settings.data.projectBuildSortList) {
-                    compileJava(project);
-                }
-
-                if (changedAnnotationList.size() > 0) {
-                    String classPathStr = getFullClasspathString();
-                    compileKaptFile(classPathStr);
-                }
-                createDexPatch();
-
-            }
-        } else {
-            WinkLog.i("空");
-            if (changedAnnotationList.size() > 0) {
-                String classPathStr = getFullClasspathString();
-                compileKaptFile(classPathStr);
-            }
-            createDexPatch();
-        }
-
-
     }
 
     @NotNull
@@ -551,16 +435,5 @@ public class CompileHelper {
 
     /*************************************************************************************************************/
 
-    private void snapshot(Object oldValue, ArrayList<String> classList) {
-        if (classList != null) {
-            classList.forEach(new Consumer<String>() {
-                @Override
-                public void accept(String c) {
-                    WinkLog.i("\t\t 变化常量[" + oldValue + "]对应的类: " + c);
-                }
-            });
-        } else {
-            WinkLog.i("const2Classes.get(oldValue)=null, oldValue=" + oldValue);
-        }
-    }
+
 }
