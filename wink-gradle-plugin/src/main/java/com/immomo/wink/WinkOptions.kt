@@ -16,7 +16,7 @@ open class WinkOptions(
 
     fun copy(): WinkOptions {
         val obj = WinkOptions()
-        obj.moduleBlacklist = this.moduleWhitelist
+        obj.moduleWhitelist = this.moduleWhitelist
         obj.moduleBlacklist = this.moduleBlacklist
         obj.kotlinSyntheticsEnable = this.kotlinSyntheticsEnable
         obj.logLevel = this.logLevel

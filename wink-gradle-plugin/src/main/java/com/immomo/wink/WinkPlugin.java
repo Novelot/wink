@@ -19,6 +19,7 @@ package com.immomo.wink;
 import com.android.build.gradle.AppExtension;
 import com.android.build.gradle.api.ApplicationVariant;
 import com.immomo.wink.helper.CleanupHelper;
+import com.immomo.wink.helper.ConstReferenceReplaceTransform;
 import com.immomo.wink.helper.DiffHelper;
 import com.immomo.wink.helper.InitEnvHelper;
 import com.immomo.wink.tasks.WinkInitTask;
@@ -88,6 +89,8 @@ public class WinkPlugin implements Plugin<Project> {
             project.getDependencies().add("debugImplementation",
                     project.getDependencies().create("com.immomo.wink:patch-lib:0.3.23"));
         }
+
+        appExtension.registerTransform(new ConstReferenceReplaceTransform(project));
     }
 
     public void combineTask(Project project) {

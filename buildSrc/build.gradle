@@ -11,7 +11,7 @@ allprojects {
 
 buildscript {
     ext {
-        gradleVersion = '3.5.0'
+        gradleVersion = '4.0.2'
         kotlinVersion = '1.3.72'
     }
     repositories {

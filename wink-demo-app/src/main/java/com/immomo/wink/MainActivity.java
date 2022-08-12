@@ -1,6 +1,7 @@
 package com.immomo.wink;
 
 import androidx.appcompat.app.AppCompatActivity;
+
 import butterknife.BindView;
 
 import android.content.res.AssetFileDescriptor;
@@ -42,10 +43,10 @@ public class MainActivity extends AppCompatActivity {
         button.setBackgroundColor(Color.BLACK);
 
         TextView textView = findViewById(R.id.textView);
-        textView.setText(new Test111().getAAA() + "2" + new ZZ().getKK());
+        textView.setText(Constant.T + new Test111().getAAA() + "2" + new ZZ().getKK());
 //        textView.setText(Tools.getTitle() + "xx1");
 
-        textView.setOnClickListener((v)->{
+        textView.setOnClickListener((v) -> {
             ARouter.getInstance().build("/com/Activity4").navigation();
             EventBus.getDefault().post(new MessageEvent());
         });
@@ -66,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
         EventBus.getDefault().unregister(this);
     }
 
-    private void loadMusic(int rawID){
+    private void loadMusic(int rawID) {
         Log.i("rawID", "rawId=" + rawID);
         Resources resources = this.getResources();
 

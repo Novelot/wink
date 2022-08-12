@@ -12,7 +12,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
 public class LocalCacheUtil {
-    private static final String TAG =  "LocalCacheUtil";
+    private static final String TAG = "LocalCacheUtil";
 
     public static <T> T getCache(String filePath) {
         ObjectInputStream ois = null;
@@ -25,7 +25,11 @@ public class LocalCacheUtil {
             }
         } catch (Exception e) {
             delete(file);
-            WinkLog.d(Constant.TAG, e.getMessage());
+            try {
+                WinkLog.d(Constant.TAG, e.toString());
+            } catch (Throwable throwable) {
+                WinkLog.throwAssert(Constant.TAG, throwable);
+            }
         } finally {
             try {
                 if (ois != null) {
@@ -39,7 +43,7 @@ public class LocalCacheUtil {
         return null;
     }
 
-    public static  <T> void save2File(T value, String filePath) {
+    public static <T> void save2File(T value, String filePath) {
         ObjectOutputStream oo = null;
         try {
             File file = new File(filePath);
@@ -63,7 +67,7 @@ public class LocalCacheUtil {
         }
     }
 
-    public static  <T> void save2File(String value, String filePath) {
+    public static <T> void save2File(String value, String filePath) {
         FileWriter oo = null;
         try {
             File file = new File(filePath);
