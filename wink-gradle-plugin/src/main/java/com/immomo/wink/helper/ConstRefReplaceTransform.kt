@@ -22,9 +22,9 @@ import org.apache.commons.io.FileUtils
  * 1.类中新加常量字段;
  * 2.使用+号拼接字符串时,会被编译为拼接后的字符串,原本int,long等的类型也会发生变化,导致找不到常量;
  */
-class ConstReferenceReplaceTransform(val project: Project) : Transform() {
+class ConstRefReplaceTransform(val project: Project) : Transform() {
 
-    override fun getName(): String = "ConstReferenceReplaceTransform"
+    override fun getName(): String = "ConstRefReplaceTransform"
 
     override fun getInputTypes(): MutableSet<QualifiedContent.ContentType> = TransformManager.CONTENT_CLASS
 
@@ -44,24 +44,24 @@ class ConstReferenceReplaceTransform(val project: Project) : Transform() {
 
     private fun onTransform(transformInvocation: TransformInvocation?) {
         transformInvocation?.inputs?.forEach { input ->
-            WinkLog.d("[ConstReferenceReplaceTransform] ---------------")
-            WinkLog.d("[ConstReferenceReplaceTransform] intput=${input}")
+            WinkLog.d("[ConstRefReplaceTransform] ---------------")
+            WinkLog.d("[ConstRefReplaceTransform] intput=${input}")
 
             input.directoryInputs.forEach { clazzDir ->
-                WinkLog.d("[ConstReferenceReplaceTransform] dirInput=${clazzDir}")
+                WinkLog.d("[ConstRefReplaceTransform] dirInput=${clazzDir}")
                 clazzDir.file.walkBottomUp().forEach {
-                    //WinkLog.vNoLimit("[ConstReferenceReplaceTransform] walk.file=${it}")
+                    //WinkLog.vNoLimit("[ConstRefReplaceTransform] walk.file=${it}")
                     if (it.isFile && it.absolutePath.endsWith(".class")) {
-                        //WinkLog.vNoLimit("[ConstReferenceReplaceTransform] walk.file=${it.absolutePath}")
+                        //WinkLog.vNoLimit("[ConstRefReplaceTransform] walk.file=${it.absolutePath}")
                         val index = it.absolutePath.indexOfLast { it == '/' }
                         val substring = it.absolutePath.substring(index + 1)
-                        //WinkLog.vNoLimit("[ConstReferenceReplaceTransform] index=${index}, substring=${substring}")
+                        //WinkLog.vNoLimit("[ConstRefReplaceTransform] index=${index}, substring=${substring}")
                         if (!substring.startsWith("R.class")
                             && !substring.startsWith("R$")
                             && !substring.startsWith("BuildConfig")
                             && !substring.startsWith("ARouter")
                         ) {
-                            //WinkLog.vNoLimit("[ConstReferenceReplaceTransform] walk.file=${it.absolutePath}")
+                            //WinkLog.vNoLimit("[ConstRefReplaceTransform] walk.file=${it.absolutePath}")
 
                             val classReader = ClassReader(FileInputStream(it.absolutePath))
                             genResolvedClass(classReader)
@@ -158,17 +158,17 @@ class ConstReferenceReplaceTransform(val project: Project) : Transform() {
         }
 
         classNode.methods.forEach {
-            WinkLog.vNoLimit("[ConstReferenceReplaceTransform] methods.forEach :method name=${it.name},desc=${it.desc}")
+            WinkLog.vNoLimit("[ConstRefReplaceTransform] methods.forEach :method name=${it.name},desc=${it.desc}")
 
             val iterator = it.instructions.iterator()
             while (iterator.hasNext()) {
                 val next = iterator.next()
 
-                //WinkLog.vNoLimit("[ConstReferenceReplaceTransform] methods.forEach iterator :next name=${next}")
+                //WinkLog.vNoLimit("[ConstRefReplaceTransform] methods.forEach iterator :next name=${next}")
 
                 when {
                     next is LdcInsnNode -> {//常量
-                        //WinkLog.vNoLimit("[ConstReferenceReplaceTransform] LdcInsnNode cst=${next.cst},type=${next.type}")
+                        //WinkLog.vNoLimit("[ConstRefReplaceTransform] LdcInsnNode cst=${next.cst},type=${next.type}")
                         if (next.cst != null
                             && (next.cst is Int || next.cst is Long || next.cst is String || next.cst is Double || next.cst is Float)
                         ) {

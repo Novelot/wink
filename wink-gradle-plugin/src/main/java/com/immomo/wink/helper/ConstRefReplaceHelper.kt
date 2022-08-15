@@ -1,11 +1,11 @@
 package com.immomo.wink.helper
 
 import com.immomo.wink.Settings
-import com.immomo.wink.helper.ConstReferenceReplaceTransform.Companion.buildDiffResolvedClass
-import com.immomo.wink.helper.ConstReferenceReplaceTransform.Companion.loadConst2Classes
-import com.immomo.wink.helper.ConstReferenceReplaceTransform.Companion.loadResolvedClass
-import com.immomo.wink.helper.ConstReferenceReplaceTransform.Companion.saveConst2Classes
-import com.immomo.wink.helper.ConstReferenceReplaceTransform.Companion.saveResovedClass
+import com.immomo.wink.helper.ConstRefReplaceTransform.Companion.buildDiffResolvedClass
+import com.immomo.wink.helper.ConstRefReplaceTransform.Companion.loadConst2Classes
+import com.immomo.wink.helper.ConstRefReplaceTransform.Companion.loadResolvedClass
+import com.immomo.wink.helper.ConstRefReplaceTransform.Companion.saveConst2Classes
+import com.immomo.wink.helper.ConstRefReplaceTransform.Companion.saveResovedClass
 import com.immomo.wink.util.WinkLog.i
 import java.io.File
 import java.util.*
