@@ -17,6 +17,10 @@ import org.apache.commons.io.FileUtils
 /**
  * 常量引用替换优化问题
  * @author 刘云龙
+ *
+ * 两个问题未解决:
+ * 1.类中新加常量字段;
+ * 2.使用+号拼接字符串时,会被编译为拼接后的字符串,原本int,long等的类型也会发生变化,导致找不到常量;
  */
 class ConstReferenceReplaceTransform(val project: Project) : Transform() {
 
