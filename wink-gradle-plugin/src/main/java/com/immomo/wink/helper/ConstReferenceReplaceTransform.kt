@@ -76,48 +76,10 @@ class ConstReferenceReplaceTransform(val project: Project) : Transform() {
         }
     }
 
-//    override fun transform(context: Context?, inputs: MutableCollection<TransformInput>?, referencedInputs: MutableCollection<TransformInput>?, outputProvider: TransformOutputProvider?, isIncremental: Boolean) {
-//        super.transform(context, inputs, referencedInputs, outputProvider, isIncremental)
-//
-//        // Transform的inputs有两种类型，一种是目录，一种是jar包，要分开遍历
-//        inputs?.forEach {
-//            //文件夹里面包含的是我们手写的类以及R.class、BuildConfig.class以及R$XXX.class等
-//            it.directoryInputs.forEach {
-//                //获取输出目录
-//                val dest = outputProvider?.getContentLocation(it.name, it.contentTypes, it.scopes, Format.DIRECTORY)
-//                //将input的目录复制到output指定目录
-//                FileUtils.copyDirectory(it.file, dest)
-//            }
-//
-//            //对类型为jar文件的input进行遍历
-//            it.jarInputs.forEach {
-//                // 重命名输出文件（同目录copyFile会冲突）
-//                var jarName = it.name
-//                val md5Name = DigestUtils.md5Hex(it.file.absolutePath)
-//                if (jarName.endsWith(".jar")) {
-//                    jarName = jarName.substring(0, jarName.length - 4)
-//                }
-//                val dest = outputProvider?.getContentLocation(jarName + md5Name, it.contentTypes, it.scopes, Format.JAR)
-//                FileUtils.copyFile(it.file, dest)
-//            }
-//        }
-//    }
-
     /**
      * 将input的文件拷贝到output路径
      */
     private fun afterTransform(transformInvocation: TransformInvocation?) {
-//        transformInvocation?.outputProvider?.deleteAll()
-//        transformInvocation?.inputs?.forEach {
-//            it.directoryInputs.forEach { input ->
-//                val dir = input.file
-//                val dest = transformInvocation?.outputProvider?.getContentLocation(input.name, input.contentTypes, input.scopes, Format.DIRECTORY)
-//                val srcDirPath = dir?.absolutePath
-//                val destDirPath = dest?.absolutePath
-//                FileUtils.copyDirectory(dir, dest)
-//            }
-//        }
-
         val inputs: MutableCollection<TransformInput>? = transformInvocation?.inputs
         val outputProvider: TransformOutputProvider? = transformInvocation?.outputProvider
 
@@ -150,11 +112,6 @@ class ConstReferenceReplaceTransform(val project: Project) : Transform() {
     private fun printCopyRight() {
         WinkLog.d("####################################")
         WinkLog.d("#######      常量引用替换        #####")
-        WinkLog.d("#######                        #####")
-        WinkLog.d("#######      月落乌啼霜满天，    #####")
-        WinkLog.d("#######      江枫渔火对愁眠。    #####")
-        WinkLog.d("#######      姑苏城外寒山寺，    #####")
-        WinkLog.d("#######      夜半钟声到客船。    #####")
         WinkLog.d("####################################")
     }
 
@@ -162,28 +119,16 @@ class ConstReferenceReplaceTransform(val project: Project) : Transform() {
     private fun mapConst(classReader: ClassReader) {
         val className = classReader.className;
         classReader.accept(object : ClassVisitor(Opcodes.ASM9) {
-
-            //                                    override fun visitSource(source: String?, debug: String?) {
-            //                                        super.visitSource(source, debug)
-            //                                        WinkLog.vNoLimit("[ConstReferenceReplaceTransform] visitSource  source=${source},debug=${debug}")
-            //                                    }
-
-            //                                    override fun visitMethod(access: Int, name: String?, descriptor: String?, signature: String?, exceptions: Array<out String>?): MethodVisitor {
-            //                                        val visitMethod = super.visitMethod(access, name, descriptor, signature, exceptions)
-            //                                        return visitMethod
-            //                                    }
             override fun visitField(access: Int, name: String?, descriptor: String?, signature: String?, value: Any?): FieldVisitor? {
                 if (access and Opcodes.ACC_PUBLIC == Opcodes.ACC_PUBLIC && access and Opcodes.ACC_STATIC == Opcodes.ACC_STATIC && access and Opcodes.ACC_FINAL == Opcodes.ACC_FINAL) {
                     name?.let {
                         clazzConstMap.add(ClazzConstMap(className, mapOf(it to value)))
                     }
                 }
-
                 return null//super.visitField(access, name, descriptor, signature, value)
             }
 
             override fun visitMethod(access: Int, name: String?, descriptor: String?, signature: String?, exceptions: Array<out String>?): MethodVisitor? {
-
                 return null
             }
         }, ClassReader.EXPAND_FRAMES)
@@ -240,24 +185,19 @@ class ConstReferenceReplaceTransform(val project: Project) : Transform() {
             }
 
         }
-
-//        resolvedClass.constKV.forEach {
-//            WinkLog.d("[Novelot] clazzConstMap class=${resolvedClass.className}, constName=${it.key},constValue=${it.value}")
-//        }
-//
-//        const2Classes.forEach {
-//            WinkLog.d("[ConstReferenceReplaceTransform] constClazzMap value=${it},class=${resolvedClass.className}")
-//        }
-
-
         saveResovedClass(project.rootDir.absolutePath, resolvedClass)
         saveConst2Classes(project.rootDir.absolutePath, const2Classes)
-
     }
 
-    // TODO: 2022/8/12 刘云龙 强制命名为了.java文件,需要区分.kt
+    /**
+     * 2022/8/12 需要区分.kt 与.java
+     */
     private fun getClassFullPath(projectDir: String, className: String?): String {
-        return "${projectDir}/src/main/java/${className}.java"
+        return if (File("${projectDir}/src/main/java/${className}.java").exists()) {
+            "${projectDir}/src/main/java/${className}.java"
+        } else {
+            "${projectDir}/src/main/java/${className}.kt"
+        }
     }
 
     private val clazzConstMap = mutableListOf<ClazzConstMap>()
