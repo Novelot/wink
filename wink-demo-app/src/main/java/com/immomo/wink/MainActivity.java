@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
         button.setBackgroundColor(Color.BLACK);
 
         TextView textView = findViewById(R.id.textView);
-        textView.setText(Constant.T + new Test111().getAAA() + "2" + new ZZ().getKK());
+        textView.setText(Constant.T + new Test111().getAAA() +ZZ.Z);
 //        textView.setText(Tools.getTitle() + "xx1");
 
         textView.setOnClickListener((v) -> {

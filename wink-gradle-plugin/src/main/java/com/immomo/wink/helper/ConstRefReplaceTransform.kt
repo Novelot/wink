@@ -40,6 +40,7 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
 
     private fun beforeTransform() {
         printCopyRight()
+        deleteConstDir(project.rootDir.absolutePath)
     }
 
     private fun onTransform(transformInvocation: TransformInvocation?) {
@@ -61,10 +62,8 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
                             && !substring.startsWith("BuildConfig")
                             && !substring.startsWith("ARouter")
                         ) {
-                            //WinkLog.vNoLimit("[ConstRefReplaceTransform] walk.file=${it.absolutePath}")
-
                             val classReader = ClassReader(FileInputStream(it.absolutePath))
-                            genResolvedClass(classReader)
+                            genResolvedClass(classReader, it.absolutePath)
                         }
                     }
 
@@ -134,17 +133,19 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
         }, ClassReader.EXPAND_FRAMES)
     }
 
-    private fun genResolvedClass(classReader: ClassReader) {
+    private fun genResolvedClass(classReader: ClassReader, classPath: String) {
 
         val classNode = ClassNode()
         classReader.accept(classNode, 0)
 
         val className = classReader.className
         val resolvedClass = ResolvedClass(className)
-        val const2Classes: HashMap<String, ArrayList<String>> = loadConst2Classes(project.rootDir.absolutePath)
+        val const2Classes: HashMap<String, HashSet<String>> = loadConst2Classes(project.rootDir.absolutePath)
+
+
 
         classNode.fields.forEach {
-            WinkLog.vNoLimit("[Novelot] classNode.fields name=${it.name},value=${it.value}")
+            //WinkLog.vNoLimit("[Novelot] classNode.fields name=${it.name},value=${it.value}")
 
             if (it.access and Opcodes.ACC_PUBLIC == Opcodes.ACC_PUBLIC
                 && it.access and Opcodes.ACC_STATIC == Opcodes.ACC_STATIC
@@ -157,15 +158,13 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
             }
         }
 
+        val classPath = getClassFullPath(project.projectDir.absolutePath, className, classPath)
         classNode.methods.forEach {
-            WinkLog.vNoLimit("[ConstRefReplaceTransform] methods.forEach :method name=${it.name},desc=${it.desc}")
+            //WinkLog.vNoLimit("[ConstRefReplaceTransform] methods.forEach :method name=${it.name},desc=${it.desc}")
 
             val iterator = it.instructions.iterator()
             while (iterator.hasNext()) {
                 val next = iterator.next()
-
-                //WinkLog.vNoLimit("[ConstRefReplaceTransform] methods.forEach iterator :next name=${next}")
-
                 when {
                     next is LdcInsnNode -> {//常量
                         //WinkLog.vNoLimit("[ConstRefReplaceTransform] LdcInsnNode cst=${next.cst},type=${next.type}")
@@ -173,18 +172,14 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
                             && (next.cst is Int || next.cst is Long || next.cst is String || next.cst is Double || next.cst is Float)
                         ) {
                             val key = getConstMapKey(next.cst)
-                            val element = getClassFullPath(project.projectDir.absolutePath, className)
-                            WinkLog.i("[Novelot]", "\t $className 中常量对应:$key:$element")
-                            if (const2Classes[key] == null) {
-                                const2Classes[key] = arrayListOf()
-                            }
-                            const2Classes[key]?.add(element)
+                            WinkLog.i("[Novelot]", "\t $className 中常量对应:$key:$classPath")
+                            const2Classes.getOrPut(key) { hashSetOf() }.add(classPath)
                         }
                     }
                 }
             }
-
         }
+
         saveResovedClass(project.rootDir.absolutePath, resolvedClass)
         saveConst2Classes(project.rootDir.absolutePath, const2Classes)
     }
@@ -192,11 +187,27 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
     /**
      * 2022/8/12 需要区分.kt 与.java
      */
-    private fun getClassFullPath(projectDir: String, className: String?): String {
-        return if (File("${projectDir}/src/main/java/${className}.java").exists()) {
-            "${projectDir}/src/main/java/${className}.java"
+    private fun getClassFullPath(projectDir: String, className: String?, classPath: String): String {
+//        return if (File("${projectDir}/src/main/java/${className}.java").exists()) {
+//            "${projectDir}/src/main/java/${className}.java"
+//        } else {
+//            "${projectDir}/src/main/java/${className}.kt"
+//        }
+
+        //内部类
+        var finalClassName = if (className?.contains("$") == true) {
+            className.substring(0, className.indexOf("$"))
         } else {
-            "${projectDir}/src/main/java/${className}.kt"
+            className
+        }
+
+        return if (classPath.contains("build/tmp/kotlin-classes")) {
+            if (finalClassName?.endsWith("Kt") == true) {
+                finalClassName.substring(0, finalClassName.indexOf("Kt"))
+            }
+            "${projectDir}/src/main/java/${finalClassName}.kt"
+        } else {
+            "${projectDir}/src/main/java/${finalClassName}.java"
         }
     }
 
@@ -272,6 +283,11 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
         }
 
         @JvmStatic
+        fun deleteConstDir(rootProjectDir: String) {
+            FileUtils.deleteDirectory(File("${rootProjectDir}/.idea/${Constant.TAG}/const/"))
+        }
+
+        @JvmStatic
         fun saveResovedClass(rootProjectDir: String, resolvedClass: ResolvedClass) {
             val dir = File("${rootProjectDir}/.idea/${Constant.TAG}/const/")
             if (!dir.exists()) {
@@ -303,22 +319,22 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
         }
 
         @JvmStatic
-        fun loadConst2Classes(rootProjectDir: String): java.util.HashMap<String, java.util.ArrayList<String>> {
+        fun loadConst2Classes(rootProjectDir: String): java.util.HashMap<String, HashSet<String>> {
             val dir = File("${rootProjectDir}/.idea/${Constant.TAG}/const/const2classes")
             if (!dir.exists()) {
                 WinkLog.i("[Novelot]", "$dir 不存在,创建文件")
                 dir.parentFile.mkdirs()
                 dir.createNewFile()
-                return HashMap<String, ArrayList<String>>()
+                return HashMap<String, HashSet<String>>()
             } else {
-                return LocalCacheUtil.getCache<HashMap<String, ArrayList<String>>>(dir.absolutePath)
+                return LocalCacheUtil.getCache<HashMap<String, HashSet<String>>>(dir.absolutePath)
             }
         }
 
         @JvmStatic
-        fun saveConst2Classes(rootProjectDir: String, const2Classes: HashMap<String, ArrayList<String>>) {
+        fun saveConst2Classes(rootProjectDir: String, const2Classes: HashMap<String, HashSet<String>>) {
             val dir = File("${rootProjectDir}/.idea/${Constant.TAG}/const/const2classes").absolutePath
-            LocalCacheUtil.save2File<HashMap<String, ArrayList<String>>>(const2Classes, dir)
+            LocalCacheUtil.save2File<HashMap<String, HashSet<String>>>(const2Classes, dir)
         }
     }
 

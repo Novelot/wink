@@ -21,7 +21,7 @@ class ConstRefReplaceHelper {
             val constChangedJava: MutableSet<String> = HashSet()
             val constChangedKotlin: MutableSet<String> = HashSet()
 
-            val mapOfConstClasses: HashMap<String, ArrayList<String>> = loadConst2Classes(rootDir)
+            val mapOfConstClasses: HashMap<String, HashSet<String>> = loadConst2Classes(rootDir)
             //从给定的class路径,获取每个class的常量信息
             buildDiffResolvedClass(classDir).forEach { rcNew ->
                 val rcOld = loadResolvedClass(rootDir, rcNew.className)
@@ -40,15 +40,26 @@ class ConstRefReplaceHelper {
                             //将常量变化对应的类,放入需要编译的列表;//变化常量对应的类:
                             mapOfConstClasses[constValue] = classList
                             //分开Java与kotlin
-                            classList.forEach { path ->
-                                if (path != null) {
-                                    if (path.endsWith(".kt")) {
-                                        constChangedKotlin.add(path)
-                                    } else if (path.endsWith(".java")) {
-                                        constChangedJava.add(path)
-                                    }
+//                            classList.forEach { path ->
+//                                if (path != null) {
+//                                    if (path.endsWith(".kt")) {
+//                                        constChangedKotlin.add(path)
+//                                    } else if (path.endsWith(".java")) {
+//                                        constChangedJava.add(path)
+//                                    }
+//                                }
+//                            }
+                            classList.groupBy { path ->
+                                if (path.endsWith(".kt")) ".kt" else ".java"
+                            }.forEach { (k, paths) ->
+                                i("\t\t 源文件后缀为=$k,paths=$paths")
+                                if (k == ".kt") {
+                                    constChangedKotlin.addAll(paths)
+                                } else {
+                                    constChangedJava.addAll(paths)
                                 }
                             }
+
                             //快照
                             i("\t\t 引用该常量对应的类,如下:")
                             classList.forEach { c -> i("\t\t\t $c") }

@@ -35,6 +35,15 @@ public class CompileHelper {
 
         ConstRefReplaceHelper.checkConstChange(file, (moduleName, constChangedJava, constChangedKotlin) -> {
             if (!constChangedKotlin.isEmpty() || !constChangedJava.isEmpty()) {
+                WinkLog.i("kotlin引用常量关联的类:");
+                constChangedKotlin.forEach(s -> {
+                    WinkLog.i("\t\t"+s);
+                });
+
+                WinkLog.i("java引用常量关联的类:");
+                constChangedJava.forEach(s -> {
+                    WinkLog.i("\t\t"+s);
+                });
 
                 //加入changed List
                 Optional<Settings.ProjectTmpInfo> pro = Settings.data.projectBuildSortList.stream().filter(projectTmpInfo -> moduleName.equals(projectTmpInfo.fixedInfo.name)).findFirst();
