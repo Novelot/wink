@@ -6,6 +6,7 @@ plugins {
 }
 
 winkOptions {
+    moduleWhitelist = ["wink-demo-app"]
     kotlinSyntheticsEnable = false
     logLevel = 0
 }

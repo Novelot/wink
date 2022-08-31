@@ -1,7 +1,7 @@
 package com.immomo.wink
 
-class Test111 {
-    fun getAAA(): String {
+class Separate {
+    fun getSeparate(): String {
         return "|"
     }
 }

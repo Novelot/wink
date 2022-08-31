@@ -29,6 +29,7 @@ public class PathUtils {
         result = Utils.runShells("source ~/.bash_profile",
                 "adb -s " + deviceId + " shell ls " + patch);
         if (result.getErrorResult().size() > 0) {
+            result.getErrorResult().stream().forEach(s->{WinkLog.throwAssert("\t\t" + s);});
             WinkLog.throwAssert("创建 apk 基准版本文件失败 " + Settings.data.patchPath);
         }
         return patch;

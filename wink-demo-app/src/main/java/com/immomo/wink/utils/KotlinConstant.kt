@@ -1,11 +1,11 @@
 package com.immomo.wink.utils
 
-class ZZ {
+class KotlinConstant {
     fun getKK(): String {
         return "zzzzzz"
     }
 
     companion object {
-        const val Z = "222222"
+        const val KOTLIN = "kotlin"
     }
 }

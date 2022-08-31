@@ -12,11 +12,10 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.alibaba.android.arouter.facade.annotation.Route;
 import com.alibaba.android.arouter.launcher.ARouter;
-import com.immomo.wink.utils.ZZ;
+import com.immomo.wink.utils.KotlinConstant;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -43,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
         button.setBackgroundColor(Color.BLACK);
 
         TextView textView = findViewById(R.id.textView);
-        textView.setText(Constant.T + new Test111().getAAA() +ZZ.Z);
+        textView.setText(Constant.JAVA + new Separate().getSeparate() + KotlinConstant.KOTLIN);
 //        textView.setText(Tools.getTitle() + "xx1");
 
         textView.setOnClickListener((v) -> {

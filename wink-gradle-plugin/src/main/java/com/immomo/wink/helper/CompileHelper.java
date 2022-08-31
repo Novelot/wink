@@ -20,7 +20,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 
 public class CompileHelper {
 
@@ -33,22 +35,34 @@ public class CompileHelper {
         }
         compileInner();
 
-        ConstRefReplaceHelper.checkConstChange(file, (moduleName, constChangedJava, constChangedKotlin) -> {
+        ConstRefReplaceHelper.checkConstChange(file, (constChangedJava, constChangedKotlin) -> {
             if (!constChangedKotlin.isEmpty() || !constChangedJava.isEmpty()) {
                 WinkLog.i("kotlin引用常量关联的类:");
                 constChangedKotlin.forEach(s -> {
-                    WinkLog.i("\t\t"+s);
+                    WinkLog.i("\t\t" + s);
                 });
 
                 WinkLog.i("java引用常量关联的类:");
                 constChangedJava.forEach(s -> {
-                    WinkLog.i("\t\t"+s);
+                    WinkLog.i("\t\t" + s);
                 });
 
                 //加入changed List
-                Optional<Settings.ProjectTmpInfo> pro = Settings.data.projectBuildSortList.stream().filter(projectTmpInfo -> moduleName.equals(projectTmpInfo.fixedInfo.name)).findFirst();
-                pro.get().changedJavaFiles.addAll(constChangedJava);
-                pro.get().changedKotlinFiles.addAll(constChangedKotlin);
+                for (Settings.ProjectTmpInfo projectTmpInfo : Settings.data.projectBuildSortList) {
+                    String moduleName = projectTmpInfo.fixedInfo.name;
+                    Predicate<String> stringPredicate = javaPath -> javaPath.contains(moduleName);
+                    projectTmpInfo.changedJavaFiles.addAll(constChangedJava.stream().filter(stringPredicate).collect(Collectors.toList()));
+                    projectTmpInfo.changedKotlinFiles.addAll(constChangedKotlin.stream().filter(stringPredicate).collect(Collectors.toList()));
+                    WinkLog.i("模块[" + moduleName + "]中发生变化的java文件,如下:");
+                    for (String s : constChangedJava.stream().filter(stringPredicate).collect(Collectors.toList())) {
+                        WinkLog.i("\t\t" + s);
+                    }
+
+                }
+
+//                Optional<Settings.ProjectTmpInfo> pro = Settings.data.projectBuildSortList.stream().filter(projectTmpInfo -> moduleName.equals(projectTmpInfo.fixedInfo.name)).findFirst();
+//                pro.get().changedJavaFiles.addAll(constChangedJava);
+//                pro.get().changedKotlinFiles.addAll(constChangedKotlin);
 
                 WinkLog.i("再编译...");
                 compileInner();

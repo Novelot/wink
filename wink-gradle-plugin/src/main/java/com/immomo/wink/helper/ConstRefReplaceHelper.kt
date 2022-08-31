@@ -14,7 +14,7 @@ class ConstRefReplaceHelper {
 
     companion object {
         @JvmStatic
-        fun checkConstChange(classDir: File, callback: (moduleName: String, constChangedJava: Set<String>, constChangedKotlin: Set<String>) -> Unit) {
+        fun checkConstChange(classDir: File, callback: (constChangedJava: Set<String>, constChangedKotlin: Set<String>) -> Unit) {
 
             val rootDir = Settings.env.rootDir ?: return
 
@@ -25,7 +25,7 @@ class ConstRefReplaceHelper {
             //从给定的class路径,获取每个class的常量信息
             buildDiffResolvedClass(classDir).forEach { rcNew ->
                 val rcOld = loadResolvedClass(rootDir, rcNew.className)
-                i("${rcNew.className}类的以下常量发生了变化:")
+                i("[常量引用替换] ${rcNew.className}类的以下常量发生了变化:")
                 rcNew.constKV.forEach { (constName: String, constValue: String) ->
                     val oldValue = rcOld?.constKV?.get(constName)
                     if (constValue != oldValue) {
@@ -40,15 +40,6 @@ class ConstRefReplaceHelper {
                             //将常量变化对应的类,放入需要编译的列表;//变化常量对应的类:
                             mapOfConstClasses[constValue] = classList
                             //分开Java与kotlin
-//                            classList.forEach { path ->
-//                                if (path != null) {
-//                                    if (path.endsWith(".kt")) {
-//                                        constChangedKotlin.add(path)
-//                                    } else if (path.endsWith(".java")) {
-//                                        constChangedJava.add(path)
-//                                    }
-//                                }
-//                            }
                             classList.groupBy { path ->
                                 if (path.endsWith(".kt")) ".kt" else ".java"
                             }.forEach { (k, paths) ->
@@ -63,7 +54,6 @@ class ConstRefReplaceHelper {
                             //快照
                             i("\t\t 引用该常量对应的类,如下:")
                             classList.forEach { c -> i("\t\t\t $c") }
-
                         }
                     }
                 }
@@ -72,7 +62,7 @@ class ConstRefReplaceHelper {
                 saveResovedClass(rootDir, rcNew)
             }
 
-            callback.invoke("wink-demo-app", constChangedJava, constChangedKotlin)
+            callback.invoke(constChangedJava, constChangedKotlin)
         }
     }
 }

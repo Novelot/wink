@@ -4,15 +4,19 @@ import com.android.build.api.transform.*
 import com.android.build.gradle.internal.pipeline.TransformManager
 import com.immomo.wink.Constant
 import com.immomo.wink.ResolvedClass
+import com.immomo.wink.Settings
 import com.immomo.wink.const_ref.ClazzConstMap
 import com.immomo.wink.util.LocalCacheUtil
 import com.immomo.wink.util.WinkLog
 import org.apache.commons.codec.digest.DigestUtils
+import org.apache.commons.io.FileUtils
 import org.gradle.api.Project
 import org.objectweb.asm.*
-import org.objectweb.asm.tree.*
-import java.io.*
-import org.apache.commons.io.FileUtils
+import org.objectweb.asm.tree.ClassNode
+import org.objectweb.asm.tree.LdcInsnNode
+import java.io.File
+import java.io.FileInputStream
+import java.io.ObjectInputStream
 
 /**
  * 常量引用替换优化问题
@@ -45,18 +49,22 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
 
     private fun onTransform(transformInvocation: TransformInvocation?) {
         transformInvocation?.inputs?.forEach { input ->
-            WinkLog.d("[ConstRefReplaceTransform] ---------------")
-            WinkLog.d("[ConstRefReplaceTransform] intput=${input}")
+            WinkLog.d("[常量引用替换] ---------------")
+            WinkLog.d("[常量引用替换] intput=${input}")
 
             input.directoryInputs.forEach { clazzDir ->
-                WinkLog.d("[ConstRefReplaceTransform] dirInput=${clazzDir}")
+                WinkLog.d("[常量引用替换] dirInput=${clazzDir}")
+
+                //是否在白名单
+                val isInWhiteList = Settings.env.options?.moduleWhitelist?.any {
+                    clazzDir.file.absolutePath.contains(it)
+                } ?: return@forEach
+                if (!isInWhiteList) return@forEach
+
                 clazzDir.file.walkBottomUp().forEach {
-                    //WinkLog.vNoLimit("[ConstRefReplaceTransform] walk.file=${it}")
                     if (it.isFile && it.absolutePath.endsWith(".class")) {
-                        //WinkLog.vNoLimit("[ConstRefReplaceTransform] walk.file=${it.absolutePath}")
                         val index = it.absolutePath.indexOfLast { it == '/' }
                         val substring = it.absolutePath.substring(index + 1)
-                        //WinkLog.vNoLimit("[ConstRefReplaceTransform] index=${index}, substring=${substring}")
                         if (!substring.startsWith("R.class")
                             && !substring.startsWith("R$")
                             && !substring.startsWith("BuildConfig")
@@ -69,7 +77,7 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
 
                 }
                 clazzDir.changedFiles.forEach { f, s ->
-                    WinkLog.w("[Novelot] changedFiles file=${f},status=${s}")
+                    WinkLog.w("[常量引用替换] changedFiles file=${f},status=${s}")
                 }
             }
         }
@@ -89,7 +97,7 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
                 val dest = outputProvider?.getContentLocation(it.name, it.contentTypes, it.scopes, Format.DIRECTORY)
                 //将input的目录复制到output指定目录
                 FileUtils.copyDirectory(it.file, dest)
-                WinkLog.d("Novelot", "dest=$dest")
+                WinkLog.d("[常量引用替换] dest=$dest")
             }
 
             //对类型为jar文件的input进行遍历
@@ -102,7 +110,7 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
                 }
                 val dest = outputProvider?.getContentLocation(jarName + md5Name, it.contentTypes, it.scopes, Format.JAR)
                 FileUtils.copyFile(it.file, dest)
-                WinkLog.d("Novelot", "dest=$dest")
+                WinkLog.d("[常量引用替换] dest=$dest")
             }
         }
     }
@@ -145,7 +153,6 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
 
 
         classNode.fields.forEach {
-            //WinkLog.vNoLimit("[Novelot] classNode.fields name=${it.name},value=${it.value}")
 
             if (it.access and Opcodes.ACC_PUBLIC == Opcodes.ACC_PUBLIC
                 && it.access and Opcodes.ACC_STATIC == Opcodes.ACC_STATIC
@@ -160,19 +167,17 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
 
         val classPath = getClassFullPath(project.projectDir.absolutePath, className, classPath)
         classNode.methods.forEach {
-            //WinkLog.vNoLimit("[ConstRefReplaceTransform] methods.forEach :method name=${it.name},desc=${it.desc}")
 
             val iterator = it.instructions.iterator()
             while (iterator.hasNext()) {
                 val next = iterator.next()
                 when {
                     next is LdcInsnNode -> {//常量
-                        //WinkLog.vNoLimit("[ConstRefReplaceTransform] LdcInsnNode cst=${next.cst},type=${next.type}")
                         if (next.cst != null
                             && (next.cst is Int || next.cst is Long || next.cst is String || next.cst is Double || next.cst is Float)
                         ) {
                             val key = getConstMapKey(next.cst)
-                            WinkLog.i("[Novelot]", "\t $className 中常量对应:$key:$classPath")
+                            WinkLog.d("\t $className 中常量对应:$key:$classPath")
                             const2Classes.getOrPut(key) { hashSetOf() }.add(classPath)
                         }
                     }
@@ -258,7 +263,7 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
                             || substring.startsWith("BuildConfig")
                             || substring.startsWith("ARouter")
                 }.map { classFile ->
-                    WinkLog.d("获取${classFile.absolutePath}的常量信息:")
+                    WinkLog.d("[常量引用替换] 获取${classFile.absolutePath}的常量信息:")
                     val classReader = ClassReader(FileInputStream(classFile.absolutePath))
                     val classNode = ClassNode()
                     classReader.accept(classNode, 0)
@@ -322,7 +327,7 @@ class ConstRefReplaceTransform(val project: Project) : Transform() {
         fun loadConst2Classes(rootProjectDir: String): java.util.HashMap<String, HashSet<String>> {
             val dir = File("${rootProjectDir}/.idea/${Constant.TAG}/const/const2classes")
             if (!dir.exists()) {
-                WinkLog.i("[Novelot]", "$dir 不存在,创建文件")
+                WinkLog.d("[常量引用替换] $dir 不存在,创建文件")
                 dir.parentFile.mkdirs()
                 dir.createNewFile()
                 return HashMap<String, HashSet<String>>()
