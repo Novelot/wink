@@ -22,7 +22,7 @@ public class DeviceUtils {
             WinkLog.i("USB 没有连接到设备");
         } else {
             List<String> devices = resultList.subList(1, resultList.size());
-            System.out.println("adb_devices 111 : " + devices.toString());
+            System.out.println("adb_devices : " + devices.toString());
             for (String deviceStr : devices) {
                 String [] arr = deviceStr.split("\\s+");
                 System.out.println(arr[0]);

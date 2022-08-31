@@ -222,7 +222,7 @@ public class WinkPlugin implements Plugin<Project> {
             String versionPath = PathUtils.getVersionPath(deviceId);
             Utils.runShells("source ~/.bash_profile\n" +
                     "adb -s " + deviceId + " shell rm -rf " + versionPath + "\n" +
-                    "adb -s " + deviceId + " shell mkdir " + versionPath + "\n" +
+                    "adb -s " + deviceId + " shell mkdir -p " + versionPath + "\n" +
                     "adb -s " + deviceId + " push " + versionFile.getAbsolutePath() + " " + versionPath);
         }
     }

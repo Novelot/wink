@@ -82,7 +82,7 @@ public class CleanupHelper {
         String cmds = "";
         cmds += "source ~/.bash_profile";
         cmds += '\n' + "adb shell rm -rf " + destPath;
-        cmds += '\n' + "adb shell mkdir " + destPath;
+        cmds += '\n' + "adb shell mkdir -p " + destPath;
 
         cmds += '\n' + "adb shell rm -rf " + destPath2;
         Utils.runShells(cmds);

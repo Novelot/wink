@@ -189,11 +189,12 @@ public class FixDexUtil {
         String dexPath = Environment.getExternalStorageDirectory().getAbsolutePath()
                 + "/Android/data/" + context.getPackageName() + "/patch_file/" + patchName;
 
-        Log.e("weijiangnan", "version" + patchName);
+
         File dexFile = new File(dexPath);
         if (dexFile.exists()) {
             return dexFile;
         }
+        Log.e("weijiangnan", "不存在 dexPath=" + dexPath);
 
         // 拷贝
         File dexFile2 = new File("/sdcard/wink/patch_file/" + patchName);

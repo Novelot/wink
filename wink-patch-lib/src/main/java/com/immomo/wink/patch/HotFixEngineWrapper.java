@@ -2,6 +2,7 @@ package com.immomo.wink.patch;
 
 import android.content.Context;
 import android.util.Log;
+import android.widget.Toast;
 
 
 import java.io.File;
@@ -16,18 +17,18 @@ import dalvik.system.PathClassLoader;
 
 /**
  * @describe 热修复的步骤：
- *  step1：构建DexClassLoader来加载补丁文件；
- *  step2：通过反射BaseDexClassLoader和DexPathList这2个类去拿到Element数组（里面就是一个或多个dex文件）；
- *       step2.1:先反射BaseDexClassLoader中变量: DexPathList pathList；
- *       step2.2:再反射DexPathList中 变量 Element[] dexElements；
- *  step3：将已经加载的apk中的Element数组和补丁中的Element数组合并，把我们的补丁dex放在数组的最前面；
- *  step4：通过反射给PathList里面的Element[] dexElements赋值
+ * step1：构建DexClassLoader来加载补丁文件；
+ * step2：通过反射BaseDexClassLoader和DexPathList这2个类去拿到Element数组（里面就是一个或多个dex文件）；
+ * step2.1:先反射BaseDexClassLoader中变量: DexPathList pathList；
+ * step2.2:再反射DexPathList中 变量 Element[] dexElements；
+ * step3：将已经加载的apk中的Element数组和补丁中的Element数组合并，把我们的补丁dex放在数组的最前面；
+ * step4：通过反射给PathList里面的Element[] dexElements赋值
  */
 public final class HotFixEngineWrapper {
     private static final String BASE_DEX_CLASSLOADER = "dalvik.system.BaseDexClassLoader";
     private static final String PATH_LIST_FIELD = "pathList";
     private static final String DEX_ELEMENTS_FIELD = "dexElements";
-//    private static String dexPath;
+    //    private static String dexPath;
     private static String optPath;
     public static final HotFixEngineWrapper INSTANCE;
 
@@ -40,6 +41,7 @@ public final class HotFixEngineWrapper {
 //        dexPath = "";
         optPath = "";
     }
+
     private final Object getFieldValue(Object obj, Class clazz, String fieldName) {
         Field declaredField = null;
         System.out.println("getFieldValue clazz=" + clazz.getName() + ", fieldName=" + fieldName);
@@ -115,8 +117,17 @@ public final class HotFixEngineWrapper {
         }
     }
 
-    public final void loadPatch( Context context) {
+    public final void loadPatch(Context context) {
         File dexFile = FixDexUtil.getDexPatchFile(context);
+        Log.e("weijiangnan", "[result] dexFile=" + dexFile);
+        if (dexFile != null) {
+            Log.e("weijiangnan", "[result] dexFile.exists=" + dexFile.exists());
+            Log.e("weijiangnan", "[result] dexFile.canRead=" + dexFile.canRead());
+            if (!dexFile.canRead()) {
+                Toast.makeText(context, "先开启[读取手机存储]权限", Toast.LENGTH_SHORT).show();
+                Log.e("weijiangnan", "[wink]先开启[读取手机存储]权限");
+            }
+        }
         if (dexFile != null && dexFile.exists() && dexFile.canRead()) {
             StringBuilder var10000 = new StringBuilder();
             File var10001 = context.getFilesDir();
@@ -138,16 +149,16 @@ public final class HotFixEngineWrapper {
             if (var12 == null) {
                 throw new NullPointerException("null cannot be cast to non-null type dalvik.system.PathClassLoader");
             } else {
-                PathClassLoader pathClassLoader = (PathClassLoader)var12;
-                DexClassLoader dexClassLoader = new DexClassLoader(dexFile.getAbsolutePath(), optPath, (String)null, (ClassLoader)pathClassLoader);
-                Object pathPathList = this.getPathList((BaseDexClassLoader)pathClassLoader);
-                Object dexPathList = this.getPathList((BaseDexClassLoader)dexClassLoader);
+                PathClassLoader pathClassLoader = (PathClassLoader) var12;
+                DexClassLoader dexClassLoader = new DexClassLoader(dexFile.getAbsolutePath(), optPath, (String) null, (ClassLoader) pathClassLoader);
+                Object pathPathList = this.getPathList((BaseDexClassLoader) pathClassLoader);
+                Object dexPathList = this.getPathList((BaseDexClassLoader) dexClassLoader);
                 Log.e("weijiangnan", "2");
                 Object pathElements = this.getDexElements(pathPathList);
                 Object dexElements = this.getDexElements(dexPathList);
                 Log.e("weijiangnan", "" + dexElements);
                 Object combineElements = this.combineArray(dexElements, pathElements);
-                Object pathList = this.getPathList((BaseDexClassLoader)pathClassLoader);
+                Object pathList = this.getPathList((BaseDexClassLoader) pathClassLoader);
                 try {
                     this.setField(pathList, pathList.getClass(), DEX_ELEMENTS_FIELD, combineElements);
                 } catch (NoSuchFieldException e) {
@@ -176,7 +187,7 @@ public final class HotFixEngineWrapper {
         int index = 0;
         int var8 = Array.getLength(newArrays) - 1;
         if (index <= var8) {
-            while(true) {
+            while (true) {
                 Log.e("weijiangnan", "newArrays3" + Array.get(newArrays, index));
                 if (index == var8) {
                     break;

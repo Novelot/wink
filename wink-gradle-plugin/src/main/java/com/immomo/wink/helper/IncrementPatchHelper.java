@@ -72,7 +72,7 @@ public class IncrementPatchHelper {
         String localVersionPath = Settings.env.tmpPath + "/version/" + Settings.env.version + ".png";
         Utils.runShells("source ~/.bash_profile\n" +
                 "adb -s " + deviceId + " shell rm -rf " + versionPath + "\n" +
-                "adb -s " + deviceId + " shell mkdir " + versionPath + "\n" +
+                "adb -s " + deviceId + " shell mkdir -p " + versionPath + "\n" +
                 "adb -s " + deviceId + " push " + localVersionPath + " " + versionPath);
     }
 
@@ -93,9 +93,9 @@ public class IncrementPatchHelper {
         for (int i = 0; i < devicesList.size(); i++) {
             String deviceId = devicesList.get(i);
             String patch = "/sdcard/Android/data/" + Settings.env.debugPackageName;
-            Utils.ShellResult result = Utils.runShells("source ~/.bash_profile\nadb -s " + deviceId + " shell ls " + patch);
+//            Utils.ShellResult result = Utils.runShells("source ~/.bash_profile\nadb -s " + deviceId + " shell ls " + patch);
             boolean noPermission = false;
-            Utils.runShells(Utils.ShellOutput.NONE, "source ~/.bash_profile\nadb -s " + deviceId + " shell mkdir " + patch);
+            Utils.ShellResult result =  Utils.runShells(Utils.ShellOutput.NONE, "source ~/.bash_profile\nadb -s " + deviceId + " shell mkdir -p " + patch);
             for (String error : result.getErrorResult()) {
                 if (error.contains("Permission denied")) {
                     // 标志没文件权限
@@ -110,11 +110,11 @@ public class IncrementPatchHelper {
                 Settings.data.patchPath = "/sdcard/Android/data/" + Settings.env.debugPackageName + "/patch_file/";
             }
 
-            String mkdirStr = "source ~/.bash_profile\nadb -s " + deviceId + " shell mkdir " + Settings.data.patchPath;
-            Utils.runShells(Utils.ShellOutput.NONE, "source ~/.bash_profile", mkdirStr);
+            String mkdirStr = "source ~/.bash_profile\nadb -s " + deviceId + " shell mkdir -p " + Settings.data.patchPath;
+            result = Utils.runShells(Utils.ShellOutput.NONE, "source ~/.bash_profile", mkdirStr);
 
-            String lsStr = "source ~/.bash_profile\nadb -s " + deviceId + " shell ls " + Settings.data.patchPath;
-            result = Utils.runShells(lsStr);
+//            String lsStr = "source ~/.bash_profile\nadb -s " + deviceId + " shell ls " + Settings.data.patchPath;
+//            result = Utils.runShells(lsStr);
             if (result.getErrorResult().size() > 0) {
                 WinkLog.throwAssert("Can not create patch file " + Settings.data.patchPath);
             }
@@ -147,7 +147,7 @@ public class IncrementPatchHelper {
             String patchName = Settings.env.version + ResourceHelper.apk_suffix;
             Utils.runShells("source ~/.bash_profile\n" +
                     "adb -s " + deviceId + " shell rm -rf " + Settings.data.patchPath + "apk\n" +
-                    "adb -s " + deviceId + " shell mkdir " + Settings.data.patchPath + "apk\n" +
+                    "adb -s " + deviceId + " shell mkdir -p " + Settings.data.patchPath + "apk\n" +
                     "adb -s " + deviceId + " push " + Settings.env.tmpPath + "/" + patchName + " " + Settings.data.patchPath + "apk/" +
                     Settings.env.version + RESOURCE_APK_SUFFIX);
         }

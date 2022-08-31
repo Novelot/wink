@@ -450,7 +450,7 @@ public class CompileHelper {
         cmds += '\n' + Settings.env.buildToolsDir + "/dx --dex --no-strict --output "
                 + Settings.env.tmpPath + "/" + patchName + " " + Settings.env.tmpPath + "/tmp_class/";
 
-        cmds += '\n' + "adb shell mkdir " + destPath;
+        cmds += '\n' + "adb shell mkdir -p " + destPath;
         cmds += '\n' + "adb push " + Settings.env.tmpPath + "/" + patchName + " " + destPath;
         return cmds;
     }
